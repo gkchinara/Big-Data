@@ -1,0 +1,271 @@
+ create database cts_jig11890;
+
+
+Jig11890@nn:~$ head -30 u.data
+user_id item_id rating timestamp
+196     242     3       881250949
+186     302     3       891717742
+22      377     1       878887116
+244     51      2       880606923
+166     346     1       886397596
+298     474     4       884182806
+115     265     2       881171488
+253     465     5       891628467
+305     451     3       886324817
+6       86      3       883603013
+62      257     2       879372434
+286     1014    5       879781125
+200     222     5       876042340
+210     40      3       891035994
+224     29      3       888104457
+303     785     3       879485318
+122     387     5       879270459
+194     274     2       879539794
+291     1042    4       874834944
+234     1184    2       892079237
+119     392     4       886176814
+167     486     4       892738452
+299     144     4       877881320
+291     118     2       874833878
+308     1       4       887736532
+95      546     2       879196566
+38      95      5       892430094
+102     768     2       883748450
+63      277     4       875747401
+160     234     5       876861185
+
+hive> use cts_jig11890;
+
+hive> set hive.cli.print.header=true;
+
+1)
+
+create external table if not exists cts_jig11890.u_data
+(
+user_id INT,
+item_id INT,
+RATING  TINYINT,
+time_stamp BIGINT COMMENT 'duartion in second'
+)
+
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '\t'
+LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+
+LOCATION '/user/Jig11890/user_data';
+
+--External table creation
+
+create external table cts_jig11890.u_data
+(
+user_id INT,
+item_id INT,
+RATING  TINYINT,
+time_stamp BIGINT COMMENT 'duartion in second'
+)
+
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '\t'
+LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+
+LOCATION '/user/Jig11890/user_data';
+
+2)
+
+hive> describe formatted u_data;.
+
+OK
+# col_name              data_type               comment
+
+user_id                 int                     None
+item_id                 int                     None
+rating                  tinyint                 None
+time_stamp              bigint                  duartion in second
+
+# Detailed Table Information
+Database:               cts_jig11890
+Owner:                  Jig11890
+CreateTime:             Thu Dec 22 13:16:10 IST 2016
+LastAccessTime:         UNKNOWN
+Protect Mode:           None
+Retention:              0
+Location:               hdfs://nn.jigsawlab.com:8020/user/Jig11890/user_data
+Table Type:             EXTERNAL_TABLE
+Table Parameters:
+        EXTERNAL                TRUE
+        transient_lastDdlTime   1482392770
+
+# Storage Information
+SerDe Library:          org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+InputFormat:            org.apache.hadoop.mapred.TextInputFormat
+OutputFormat:           org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+Compressed:             No
+Num Buckets:            -1
+Bucket Columns:         []
+Sort Columns:           []
+Storage Desc Params:
+        field.delim             \t
+        line.delim              \n
+        serialization.format    \t
+Time taken: 0.077 seconds
+
+--
+
+3)
+
+hive> select * from u_data LIMIT 10;
+
+hive> select count(*) from u_data;--100000
+
+----
+
+4)
+
+hive> select user_id,count(*) from u_data group by user_id;
+
+5)
+
+hive> select item_id,count(*) from u_data group by item_id;
+---
+
+
+Jig11890@nn:~$ head -30 u.user
+1|24|M|technician|85711
+2|53|F|other|94043
+3|23|M|writer|32067
+4|24|M|technician|43537
+5|33|F|other|15213
+6|42|M|executive|98101
+7|57|M|administrator|91344
+8|36|M|administrator|05201
+9|29|M|student|01002
+10|53|M|lawyer|90703
+11|39|F|other|30329
+12|28|F|other|06405
+13|47|M|educator|29206
+14|45|M|scientist|55106
+15|49|F|educator|97301
+16|21|M|entertainment|10309
+17|30|M|programmer|06355
+18|35|F|other|37212
+19|40|M|librarian|02138
+20|42|F|homemaker|95660
+21|26|M|writer|30068
+22|25|M|writer|40206
+23|30|F|artist|48197
+24|21|F|artist|94533
+25|39|M|engineer|55107
+26|49|M|engineer|21044
+27|40|F|librarian|30030
+28|32|M|writer|55369
+29|41|M|programmer|94043
+30|7|M|student|55436
+
+6)
+
+Pattern--
+user id |age | gender | occupation | zip code
+
+create external table if not exists cts_jig11890.u_user
+(
+user_id INT,
+age INT,
+gender STRING,
+occupation STRING,
+zip_code BIGINT 
+)
+
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '|'
+LINES TERMINATED BY '\n'
+STORED AS TEXTFILE
+
+LOCATION '/user/Jig11890/user_details';
+
+7)
+
+hive> describe formatted cts_jig11890.u_user;
+
+
+8)
+
+hive> select * from cts_jig11890.u_user;
+
+9)
+
+hive> select count(*) from u_user;
+
+10)
+
+hive> select gender,count(*) cnt from cts_jig11890.u_user group by gender;
+
+gender  _c1
+F       273
+M       670
+
+
+11)
+
+
+Reduce join:-
+-----------
+
+select * from u_data a JOIN u_user b ON a.user_id = b.user_id;--reduce join--Time taken: 94.444 seconds
+
+
+Map join:-
+-----------
+SELECT /*+ MAPJOIN(b) */ a.*,b.*
+FROM u_data a JOIN u_user b ON a.user_id = b.user_id;--Time taken: 92.372 seconds
+
+
+
+
+12) 
+
+CREATE TABLE u_user_partitioned 
+(
+user_id INT,
+age INT,
+gender STRING,
+zip_code BIGINT 
+)
+PARTITIONED BY (occupation STRING);
+
+SET hive.exec.dynamic.partition.mode = nonstrict;
+
+INSERT OVERWRITE TABLE u_user_partitioned PARTITION(occupation)
+SELECT user_id,age ,gender ,zip_code ,occupation from u_user;
+
+hive> select * from u_user_partitioned LIMIT 20;
+
+
+13)
+
+
+hive> select occupation,count(*) cnt from u_user group by occupation order by cnt desc LIMIT 1;
+OK
+student 196
+
+hive> select a.occupation from 
+	(select occupation,count(*) cnt from u_user group by occupation order by cnt desc LIMIT 1) a;
+
+--------
+select gender,count(*) from u_user
+where occupation = (select occupation from 
+(select occupation,count(*) cnt from u_user group by occupation order by cnt desc LIMIT 1) a)
+group by gender;
+-------------
+
+select gender,count(*) from u_user
+where occupation = 'student'
+group by gender;--Time taken: 13.646 seconds
+
+
+select gender,count(*) from u_user_partitioned
+where occupation = 'student'
+group by gender;--Time taken: 11.518 seconds
+
+Performance improved for partitioned table

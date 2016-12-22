@@ -1,0 +1,368 @@
+hive> create database cts_jig11890;
+OK
+Time taken: 0.352 seconds
+hive> use cts_jig11890;
+OK
+Time taken: 0.02 seconds
+
+
+1. Create an external table u_data for u.data in HDFS.
+
+hive> create external table cts_jig11890.u_data
+    > (
+    > user_id INT,
+    > item_id INT,
+    > RATING  TINYINT,
+    > time_stamp BIGINT COMMENT 'duartion in second'
+    > )
+    >
+    > ROW FORMAT DELIMITED
+    > FIELDS TERMINATED BY '\t'
+    > LINES TERMINATED BY '\n'
+    > STORED AS TEXTFILE
+    >
+    > LOCATION '/user/Jig11890/user_data';
+OK
+Time taken: 0.025 seconds
+
+2. See the field descriptions of u_data table
+
+hive> describe formatted u_data;
+OK
+# col_name              data_type               comment
+
+user_id                 int                     None
+item_id                 int                     None
+rating                  tinyint                 None
+time_stamp              bigint                  duartion in second
+
+# Detailed Table Information
+Database:               cts_jig11890
+Owner:                  Jig11890
+CreateTime:             Thu Dec 22 16:35:05 IST 2016
+LastAccessTime:         UNKNOWN
+Protect Mode:           None
+Retention:              0
+Location:               hdfs://nn.jigsawlab.com:8020/user/Jig11890/user_data
+Table Type:             EXTERNAL_TABLE
+Table Parameters:
+        EXTERNAL                TRUE
+        transient_lastDdlTime   1482404705
+
+# Storage Information
+SerDe Library:          org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+InputFormat:            org.apache.hadoop.mapred.TextInputFormat
+OutputFormat:           org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+Compressed:             No
+Num Buckets:            -1
+Bucket Columns:         []
+Sort Columns:           []
+Storage Desc Params:
+        field.delim             \t
+        line.delim              \n
+        serialization.format    \t
+Time taken: 0.115 seconds
+
+
+3. Show all the data in the newly created u_data table
+
+hive> select * from u_data;
+
+LIMITED to 10 for readablity
+
+hive> select * from u_data LIMIT 10;
+OK
+196     242     3       881250949
+186     302     3       891717742
+22      377     1       878887116
+244     51      2       880606923
+166     346     1       886397596
+298     474     4       884182806
+115     265     2       881171488
+253     465     5       891628467
+305     451     3       886324817
+6       86      3       883603013
+Time taken: 0.4 seconds
+
+
+4. Show the numbers of item reviewed by each user in the newly created u_data table
+
+hive> select user_id,count(*) from u_data group by user_id;
+
+Sample o/p-
+
+924     82
+925     32
+926     20
+927     120
+928     32
+929     49
+930     63
+931     61
+932     241
+933     184
+934     174
+935     39
+936     142
+937     40
+938     108
+939     49
+940     107
+941     22
+942     79
+943     168
+Time taken: 13.099 seconds
+
+5. Show the numbers of users reviewed each item in the newly created u_data table
+
+hive> select item_id,count(*) from u_data group by item_id;
+
+hive> select item_id,count(*) from u_data group by item_id LIMIT 10;
+
+Total MapReduce jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapred.reduce.tasks=<number>
+Starting Job = job_201612081334_1502, Tracking URL = http://nn.jigsawlab.com:50030/jobdetails.jsp?jobid=job_201612081334_1502
+Kill Command = /opt/cloudera/parcels/CDH-4.7.1-1.cdh4.7.1.p0.47/lib/hadoop/bin/hadoop job  -kill job_201612081334_1502
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2016-12-22 16:40:10,247 Stage-1 map = 0%,  reduce = 0%
+2016-12-22 16:40:15,263 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 1.56 sec
+2016-12-22 16:40:16,268 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 1.56 sec
+2016-12-22 16:40:17,273 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 1.56 sec
+2016-12-22 16:40:18,278 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 1.56 sec
+2016-12-22 16:40:19,284 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 1.56 sec
+2016-12-22 16:40:20,289 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 2.89 sec
+2016-12-22 16:40:21,295 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 2.89 sec
+2016-12-22 16:40:22,301 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 2.89 sec
+MapReduce Total cumulative CPU time: 2 seconds 890 msec
+Ended Job = job_201612081334_1502
+MapReduce Jobs Launched:
+Job 0: Map: 1  Reduce: 1   Cumulative CPU: 2.89 sec   HDFS Read: 1979386 HDFS Write: 57 SUCCESS
+Total MapReduce CPU Time Spent: 2 seconds 890 msec
+OK
+1       452
+2       131
+3       90
+4       209
+5       86
+6       26
+7       392
+8       219
+9       299
+10      89
+Time taken: 14.458 seconds
+
+6. Create an external table u_user for u.user in HDFS .
+
+hive> create external table if not exists cts_jig11890.u_user
+    > (
+    > user_id INT,
+    > age INT,
+    > gender STRING,
+    > occupation STRING,
+    > zip_code BIGINT
+    > )
+    >
+    > ROW FORMAT DELIMITED
+    > FIELDS TERMINATED BY '|'
+    > LINES TERMINATED BY '\n'
+    > STORED AS TEXTFILE
+    >
+    > LOCATION '/user/Jig11890/user_details';
+OK
+Time taken: 0.048 seconds
+
+
+7. See the field descriptions of u_user table
+
+hive> describe formatted cts_jig11890.u_user;
+OK
+# col_name              data_type               comment
+
+user_id                 int                     None
+age                     int                     None
+gender                  string                  None
+occupation              string                  None
+zip_code                bigint                  None
+
+# Detailed Table Information
+Database:               cts_jig11890
+Owner:                  Jig11890
+CreateTime:             Thu Dec 22 16:41:10 IST 2016
+LastAccessTime:         UNKNOWN
+Protect Mode:           None
+Retention:              0
+Location:               hdfs://nn.jigsawlab.com:8020/user/Jig11890/user_details
+Table Type:             EXTERNAL_TABLE
+Table Parameters:
+        EXTERNAL                TRUE
+        transient_lastDdlTime   1482405070
+
+# Storage Information
+SerDe Library:          org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+InputFormat:            org.apache.hadoop.mapred.TextInputFormat
+OutputFormat:           org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+Compressed:             No
+Num Buckets:            -1
+Bucket Columns:         []
+Sort Columns:           []
+Storage Desc Params:
+        field.delim             |
+        line.delim              \n
+        serialization.format    |
+Time taken: 0.057 seconds
+
+8. Show all the data in the newly created user table
+
+hive> select * from cts_jig11890.u_user;
+
+hive> select * from cts_jig11890.u_user LIMIT 10;
+OK
+1       24      M       technician      85711
+2       53      F       other   94043
+3       23      M       writer  32067
+4       24      M       technician      43537
+5       33      F       other   15213
+6       42      M       executive       98101
+7       57      M       administrator   91344
+8       36      M       administrator   5201
+9       29      M       student 1002
+10      53      M       lawyer  90703
+Time taken: 0.073 seconds
+
+9. Count the number of data in the u_user table
+
+hive> select count(*) from u_user;
+Total MapReduce jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks determined at compile time: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapred.reduce.tasks=<number>
+Starting Job = job_201612081334_1504, Tracking URL = http://nn.jigsawlab.com:50030/jobdetails.jsp?jobid=job_201612081334_1504
+Kill Command = /opt/cloudera/parcels/CDH-4.7.1-1.cdh4.7.1.p0.47/lib/hadoop/bin/hadoop job  -kill job_201612081334_1504
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2016-12-22 16:43:50,310 Stage-1 map = 0%,  reduce = 0%
+2016-12-22 16:43:55,325 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 0.72 sec
+2016-12-22 16:43:56,331 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 0.72 sec
+2016-12-22 16:43:57,337 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 0.72 sec
+2016-12-22 16:43:58,344 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 1.91 sec
+2016-12-22 16:43:59,351 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 1.91 sec
+2016-12-22 16:44:00,357 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 1.91 sec
+MapReduce Total cumulative CPU time: 1 seconds 910 msec
+Ended Job = job_201612081334_1504
+MapReduce Jobs Launched:
+Job 0: Map: 1  Reduce: 1   Cumulative CPU: 1.91 sec   HDFS Read: 22844 HDFS Write: 4 SUCCESS
+Total MapReduce CPU Time Spent: 1 seconds 910 msec
+OK
+943
+Time taken: 12.412 seconds
+
+10. Count the number of user in the u_user table genderwise
+
+hive> select gender,count(*) cnt from cts_jig11890.u_user group by gender;
+Total MapReduce jobs = 1
+Launching Job 1 out of 1
+Number of reduce tasks not specified. Estimated from input data size: 1
+In order to change the average load for a reducer (in bytes):
+  set hive.exec.reducers.bytes.per.reducer=<number>
+In order to limit the maximum number of reducers:
+  set hive.exec.reducers.max=<number>
+In order to set a constant number of reducers:
+  set mapred.reduce.tasks=<number>
+Starting Job = job_201612081334_1505, Tracking URL = http://nn.jigsawlab.com:50030/jobdetails.jsp?jobid=job_201612081334_1505
+Kill Command = /opt/cloudera/parcels/CDH-4.7.1-1.cdh4.7.1.p0.47/lib/hadoop/bin/hadoop job  -kill job_201612081334_1505
+Hadoop job information for Stage-1: number of mappers: 1; number of reducers: 1
+2016-12-22 16:44:48,251 Stage-1 map = 0%,  reduce = 0%
+2016-12-22 16:44:53,267 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 0.69 sec
+2016-12-22 16:44:54,272 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 0.69 sec
+2016-12-22 16:44:55,278 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 0.69 sec
+2016-12-22 16:44:56,284 Stage-1 map = 100%,  reduce = 0%, Cumulative CPU 0.69 sec
+2016-12-22 16:44:57,290 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 1.93 sec
+2016-12-22 16:44:58,297 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 1.93 sec
+2016-12-22 16:44:59,304 Stage-1 map = 100%,  reduce = 100%, Cumulative CPU 1.93 sec
+MapReduce Total cumulative CPU time: 1 seconds 930 msec
+Ended Job = job_201612081334_1505
+MapReduce Jobs Launched:
+Job 0: Map: 1  Reduce: 1   Cumulative CPU: 1.93 sec   HDFS Read: 22844 HDFS Write: 12 SUCCESS
+Total MapReduce CPU Time Spent: 1 seconds 930 msec
+OK
+F       273
+M       670
+Time taken: 14.466 seconds
+
+11. Join u_data table and u_user tables based on userid
+
+- Perform a reduce side join and map side join for the same and compare the time taken in both cases.
+
+
+Reduce join:-
+-----------
+
+select * from u_data a JOIN u_user b ON a.user_id = b.user_id;--reduce join--Time taken: 94.444 seconds
+
+
+Map join:-
+-----------
+SELECT /*+ MAPJOIN(b) */ a.*,b.*
+FROM u_data a JOIN u_user b ON a.user_id = b.user_id;--Time taken: 92.372 seconds
+
+SELECT /*+ MAPJOIN(a) */ a.*,b.*
+FROM u_data  a JOIN u_user  b ON a.user_id = b.user_id;--Time taken: 90.877 seconds
+
+SELECT /*+ MAPJOIN(a) */ a.*,b.*
+FROM u_user a JOIN u_data  b ON a.user_id = b.user_id;--Time taken: 87.84 seconds
+
+
+12. Create a partitioned table u_user_partitioned, partitioned by occupation column
+
+CREATE TABLE u_user_partitioned 
+(
+user_id INT,
+age INT,
+gender STRING,
+zip_code BIGINT 
+)
+PARTITIONED BY (occupation STRING);
+
+SET hive.exec.dynamic.partition.mode = nonstrict;
+
+INSERT OVERWRITE TABLE u_user_partitioned PARTITION(occupation)
+SELECT user_id,age ,gender ,zip_code ,occupation from u_user;
+
+13. Find out the total number of male and total number of female only for the most common occupation –
+
+you can hard code the occupation/ use subqueries.
+
+- Perform the query on both un-partitioned table and partitioned table.
+- Compare and report the performance differences.
+
+
+
+hive> select occupation,count(*) cnt from u_user group by occupation order by cnt desc LIMIT 1;
+OK
+student 196
+
+hive> select a.occupation from 
+	(select occupation,count(*) cnt from u_user group by occupation order by cnt desc LIMIT 1) a;
+
+
+select gender,count(*) from u_user
+where occupation = 'student'
+group by gender;--Time taken: 13.646 seconds
+
+
+select gender,count(*) from u_user_partitioned
+where occupation = 'student'
+group by gender;--Time taken: 11.518 seconds
+
+Performance improved for partitioned table
