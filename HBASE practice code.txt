@@ -1,0 +1,76 @@
+create table-
+-------------
+
+create 'employees','basicinfo','personalinfo','salary'
+
+insert data-
+-----------
+
+put 'employees','1','basicinfo:name','Guptesh'
+
+put 'employees',2,'basicinfo:home','BLR'
+
+put 'employees',1,'basicinfo:gender','male'
+
+
+get row data-(each cell value associated with timestamp)
+------------
+
+get 'employees',1
+
+update data-
+------------
+put 'employees','1','basicinfo:name','Sachin'
+
+To retrive all versions of updates for specific columns-
+-------------------------------------------------------
+
+get 'employees',1,{COLUMN=>'basicinfo:name',VERSIONS=>3}
+
+to retrive all column values of a table with versions-
+---------------------------------------------------------
+
+scan 'employees',{VERSIONS=>3}
+
+scan 'employees',{COLUMNS=>'basicinfo:name',VERSIONS=>3}
+
+scan 'employees',{VERSIONS=>3,LIMIT=>1}
+
+scan 'employees',{VERSIONS=>3,STARTROW=>'2',ENDROW=>'3'}
+
+count nos of rows-
+------------------
+
+count('employees')
+
+Check table existance-
+----------------------
+
+exists('employees')
+
+drop table-
+--------------
+
+
+disable('employees')
+
+drop('employees')
+
+
+delete all rows of table-
+-------------------------
+
+
+truncate('employees')
+
+
+to delete data-
+--------------
+
+delete 'employees',5,'basicinfo:name'
+
+
+Table import via sqoop-
+----------------------
+
+sqoop import --connect jdbc:mysql://localhost/test_hbase --username root --password root --table locations --hbase-table locations_test --column-family cf1

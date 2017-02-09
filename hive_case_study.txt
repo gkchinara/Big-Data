@@ -1,5 +1,52 @@
  create database cts_jig11890;
 
+create database cts_jig11890
+>COMMENT 'Database for assignment'
+>LOACTION '/user/Jig11890/hive';
+
+DROP DATABASE cts_jig11890 CASCADE;
+
+SET hive.cli.print.curent.db=true;--Show db name at command line
+SET hive.cli.print.header=true;--SHOW header of table columns
+
+Ex-
+--
+
+SET hive.metastore.warehouse.dir;--Hive tables will reside in this path
+
+hive> dfs -ls /user/hive/warehouse;
+
+Jig11890@nn:~$ hive -e "select * from u_data LIMIT 10";--Running from command line
+
+Jig11890@nn:~$ hive -f hivequery;--Running from command file
+
+create table like-
+------------------
+CREATE TABLE compaiescopy LIKE hiveclass.companies;
+
+Loading data into hive table-
+-----------------------------
+LOAD DATA LOCAL INPATH '/home/hduser/docs/hive/src' INTO companies;
+#We can load multiple file to same table using the above command
+LOAD DATA LOCAL INPATH '/home/hduser/docs/hive/src1' INTO companies;
+#We can also load a directory containing multiple input file directly to hive table
+LOAD DATA LOCAL INPATH '/home/hduser/docs/hive/' INTO companies;
+LOAD DATA INPATH '/hive/src_hdfs' OVERWRITE INTO companies;--load data from hdfs
+
+
+Loading data from one table to multiple tables.
+-----------------------------------------------
+hive>FROM companies
+	>INSERT OVERWRITE TABLE companies3 SELECT * where name = 'GOOGLE'
+	>INSERT OVERWRITE TABLE companies3 SELECT * where name = 'Facebook';
+
+
+Exporting data from Hive table(INSERT...DIRECTORY...SELECT)
+------------------------------
+
+INSERT OVERWRITE LOCAL DIRECTORY '<Destination on Local>'
+Selecct name,marketcap FROM companies;
+
 
 Jig11890@nn:~$ head -30 u.data
 user_id item_id rating timestamp
@@ -234,10 +281,10 @@ zip_code BIGINT
 )
 PARTITIONED BY (occupation STRING);
 
-SET hive.exec.dynamic.partition.mode = nonstrict;
+SET hive.exec.dynamic.partition.mode = nonstrict;--will check the complete data in table
 
 INSERT OVERWRITE TABLE u_user_partitioned PARTITION(occupation)
-SELECT user_id,age ,gender ,zip_code ,occupation from u_user;
+SELECT user_id,age ,gender ,zip_code ,occupation from u_user;--example on dynamic partition
 
 hive> select * from u_user_partitioned LIMIT 20;
 
@@ -269,3 +316,70 @@ where occupation = 'student'
 group by gender;--Time taken: 11.518 seconds
 
 Performance improved for partitioned table
+
+
+---------------------------------------------------------------
+Concepts
+
+--Table created normally without external statement are called managed or internal tables
+--For these Hive controls the lifecycle of tables.
+
+Partition concepts
+------------------
+
+Difference between normal and partitioned table data loading is partitioned table data loading
+   needs to be specified regarding the partition data needs to be loaded.
+
+SET hive.exec.dynamic.partition.mode = strict;--will give error if we try to execute hive queries without where clause so as to avoid running multiple map-redure jobs
+
+To see partitions in table 
+--------------------------
+
+Show partitions <tab_name>;
+
+Loading data to multiple partitions
+-----------------------------------
+
+
+hive>FROM daily d
+	>INSERT OVERWRITE TABLE dailypartitioned 
+	>PARTITION (Year=2007)
+	>SELECT * LIMIT 10
+	>INSERT OVERWRITE TABLE dailypartitioned 
+	>PARTITION (Year=2006)
+	>SELECT * LIMIT 10
+	>INSERT OVERWRITE TABLE dailypartitioned 
+	>PARTITION (Year=2005)
+	>SELECT * LIMIT 10;
+dynamic partitions(data has to be loaded from query not from directory)
+-------------------
+INSERT OVERWRITE TABLE u_user_partitioned PARTITION(occupation)
+SELECT user_id,age ,gender ,zip_code ,occupation from u_user;--example on dynamic partition
+
+For running above dynamic partitions we need to set some property.
+set hive.mapred.mode=nonrestrict;--put to non strict mode
+hive.exec.max.dynamic.partitions;--max nos of partitions a query can create(default 1000)
+hive.exec.max.dynamic.partitions.pernode;--max nos of partitions per mapper or reducer can create(default 100)
+
+
+
+Loading data into external partition table(Main advantage of external table partition is 
+					we can store table data in multiple directories even may be different machines)
+-------------------------------------------
+ALTER TABLE dailyexternal ADD PARTITION (Year=2010) LOCATION '/hive/data/2010';
+ALTER TABLE dailyexternal ADD PARTITION (Year=2010) LOCATION '/hive/data/2011';
+
+Why hive triggers MapR jobs?
+----------------------------
+select * from companies where name='Oracle';
+select name,companies from companies;
+
+--For above two hive will need metastore details, structure hence it will trigger map jobs
+--However if there is any aggregation in query, reduce task will also trigger for doing aggregations 
+
+Element reference element of collections
+----------------------------------------
+ARRARY element reference through index,0-based, ex-arr[0]
+MAP element access is through index,using keys, ex-CXOS["CEO"]
+STRUCt element access is using dot notation
+Reference non-existent elements returns NULL

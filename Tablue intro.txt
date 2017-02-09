@@ -1,0 +1,126 @@
+Tablue Workflow-
+-----------------
+
+Tablue is designed to allow people with no technical training to analyze their data efficiently
+
+Workflow based on 3 concept-
+
+Open data- Toconnect text files,excel,access or other databases
+Analyze- About viewing ,filtering, sorting and summarizing data
+Share - Share final reasults with others through web
+
+
+tablue environment consist of a landing page, data connectivity page,workspace,workbooks and sheets
+
+Landing page-(Home page of tablue)
+---------
+-->First view of tablue public when you open the tool
+-->provides resources for getting started quickly
+
+Data Connectivity page
+----------------------
+-->Tableau public allows only limitied sources like text files , excel
+-->Professional version is compatible with SQL and Hadoop databases.
+
+Tablue Workspace
+----------------
+Tablue workscape is the place where magic happens and it has a layout much similar to Excel but with more drag and drop functionality.
+
+-->Consist of menus, a toolbar, the data window and worksheets
+-->Powerhouse of tablue tool for creating interactive visualizations
+
+Worksheet and dashboards
+------------------------
+
+Tableau workbook files are much like Microsoft excel workbooks
+Dashboards are often created using individual workbooks
+
+Files and folders(Extn name of tablue workbooks and working repository of tablue on local machine)
+-----------------
+
+-->Allow to save your work only on public server
+-->Workbook files will have .twb(tablue workbook) or 
+		.twbx(packaged workbook) extension.(these are only applicable for tablue desktop version)
+
+
+
+Working with Tablue--
+---------------------
+
+-->Best thing about tablue is its drag and drop functionality.
+-->Tablue doesn't require prog knowledge and easier to get used to after some practice
+-->Provides excel like functionality with advanced features
+-->Can perform joins and variable data type declarations within workspace
+-->Executes aggregations,cross tabs, frequency distributions
+-->Visualization recommendation option "Show me is available.
+-->Filtering based on missing values and other criterion is possible
+-->Helps to create interactive visualizations
+-->Enables easy sharing using public server and reader options
+
+Steps of Performing Analysis with Tableau
+-----------------------------------------
+
+-->Define problem hypothesis
+-->Identify relevant variables
+-->Choose right visualization
+-->Explore relations
+-->Generate insights
+
+Data automatically diided into two catagories--
+---------------------------------------------
+-->Dimensions (Catagorical)
+-->Measures(To perform numerical operations)
+
+Creating interactive dahsboards using Tablue-
+---------------------------------------------
+
+-->Dash board is collection of views stored on a single sheet where we can compair or moniter varity of data view symoltaniously.
+-->Tableau Dashboards are excellent for analyzing informations and monitering performance on overall business goals
+
+Tips for building good dashboards-
+---------------------------------
+-->Pleace only important visuals
+-->Display legends that are appropriate to the visuals
+-->Avoid use of multiple colors
+-->Use only a maximum of 3 visuals
+-->Add interactivity to encourage exploration
+
+Different ways to publish the dashboards depend on weather they are created using Tablue Public/Desktop
+--> For Tableau Public
+	-->Needs Tableau public account with registered email address
+	-->Workbooks get saved on the tablue public server
+--> For Tablue Desktop
+	-->Direct saving of completed workbooks is possible (.twb or .twbx)
+	-->Publish on Tableau server at enterprise level 
+	-->Even Tablue Public Server can be used
+
+
+
+
+
+
+
+-----------------------------------------------------------------------------------------------
+
+Tablue Hadoop Integration
+--------------------------
+
+Tableau enables connectivity to various Hadoop distributionand provides adhoc visualization capabilities on Hadoop data
+
+-->Extend usablity of Apache hadoop through Tableau
+-->Provides a reliable , secure and robust connection experience
+-->Use Apache Hive as defacto standard for sql access in Hadoop
+-->Works with Cloudera, HortonWorks and MapR version via ODBC
+-->Connects to Hadoop Hive through hive server or hiveserver2
+-->Processing is done wih help of In-memory analytical engine
+-->Offers XML processing functionality for Hadoop data
+
+-->Tablue supports connection to data stored in cloudera's, hortonworks' and MapR's distributions via ODBC connection
+Prerequisites
+	-->Setting up of functioning Hadoop cluster
+	-->Respective ODBC driver installation
+Connect to Hadoop hive
+	-->Possible with both hiveserver or hiveserver2
+	-->Version of driver should be compatible with Hadoop distribution
+
+Starting hive services

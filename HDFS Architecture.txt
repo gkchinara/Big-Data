@@ -1,0 +1,34 @@
+Hadoop core services
+--------------------
+
+--> Hadoop supports master-slave distributed architecture
+-->5 core Hadoop servides in a cluster(Hadoop 1.0)
+		Master 		 Slave
+		------  	-----
+   Mapreduce -->Jobtracker-->Task Tracker
+ -------------Service line 1-------------Procesing engine
+
+HDFS  |  -->Name Node 	   -->Data node
+      |	 -->Secondary name node
+--------------Service line 2--------------HDFS
+
+-->Jobs submitted to Hadoop 1.0 cluster get converted to MapR jobs
+
+MR1-MR2 difference
+------------------
+Job Tracker-->Resource Manager(Scheduler and application manager)
+Task Tracker--> Application master
+
+
+Hadoop2.0
+---------
+
+HDFS2
+YARN--Mapreduce(batch)
+    --TEZ      (interactive)(3rd party framework plugin to YARN/Critical for Machine learning algo/allow spark to plug into Hadoop)
+    --Others 
+
+
+
+
+YARN is a two tiered model with some components in master mode and some operating in slave mode.

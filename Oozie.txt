@@ -1,0 +1,19 @@
+nameNode=hdfs://nn.jigsawlab.com:8020
+jobTracker=nn.jigsawlab.com:8021
+queueName=default
+oozie.wf.application.path=${nameNode}/user/Jig11890/oozie/mapreduce/mrworkflow.xml
+inputDir=/user/Jig11890/input1
+outputDir=/user/Jig11890/wcoutputoozie
+oozie.use.system.libpath=true
+
+
+oozie job hdfs://nn.jigsawlab.com:11000/oozie -config mrjob.properties -run
+
+oozie job -oozie hdfs://nn.jigsawlab.com:11000/oozie -info <job_name>
+
+
+oozie job -oozie http://localhost:11000/oozie -config sqoopjob.properties -run
+
+oozie job -oozie http://localhost:11000/oozie -info <name>
+
+ oozie job -oozie http://localhost:11000/oozie -info 0000046-170130124738121-oozie-oozi-W

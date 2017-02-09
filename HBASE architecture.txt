@@ -1,0 +1,100 @@
+HBase Arcitecture-
+
+-->In hbase table data stored in regions.
+-->When table become too big, table partitioned into multiple regions, 
+		with each region storing range of the table rows.
+-->Data partitioned over row keys into different regions.(Basic unit of horizontal scalability is region).
+-->Regions are subset of table data and besically contigeous sorted range of rows that are stored together.
+-->hence we will start with one region and when table grows it will be moved to more regions.
+-->HRegionServer moniter/manage multiple HRegions
+
+Work of Hregionserver-
+---------------
+-Hosting and managing Regions
+-Splitting the Regions automatically
+-Handling the read/write request
+-Communicating with clients directly
+
+--Basically in hadoop cluster, Hregion serverrun in data node server, 
+	There can be multiple region server in cluster along with multiple regions.
+-->In order to moniter all HBase region server, we have Hmaster server.
+	It is the interface for all meta dat changes.Responsibility are as below-
+
+		-->Responsible for admin operations
+		-->Manage and moniter cluster
+		-->Assign regions to region servers
+		-->Controls Load Balancing and failover
+
+-->HMaster typically run on same machine where HDFS NN is running.
+-->HBase uses log structure merge keys(LSM tree)
+
+LMS tree functioning-
+--------------------
+All puts first logs into write ahead logs.
+	-->write ahead logs is common to all region in region server and 
+		store data in HDFS and can be used to restore the database 
+		in case anything goes wrong.
+
+-->Inserts first stored at memstore(memory store)
+-->When memstore accumulate enough data, it will create a new "HFile".
+	HFile is a hbase specific file format.
+-->there can be multiple HFile for a table in a single region.
+
+-->Hbase uses HFile to store the tables on HDFS
+-->HFILE stores the keys in a lexicographic order using row keys.
+-->Its a block indexed file format for storing key-value pairs.
+
+BLOCK INDEXED-
+--------------
+-->Data is stored in a sequence of blocks
+-->Separate index is maintained at the end of the file to locate the blocks.
+-->When a read request comes, the index is searched for the block location.Then the data is read from that block.
+
+-->There needs to be a place holder for which region server catch holds of which regions etc
+-->For that Hbase has two catalog table.
+-->1. ".META"- Holds locations of the regions of all tables
+	-->Keeps track of the current location of each region, for each table.
+	-->Row in metatable corresponding to a single region.
+	-->One row corresponds to a region its region server etc.
+-->2 -ROOT- 
+	-->Holds location of .META table
+	-->Location of -ROOT- table is stored in a ZooKeeper node.
+
+ZooKeeper:
+---------
+-->It is a distribute, coordination service for distributed applications.
+-->HBase uses it for storing the metadata related to ROOT file.
+
+Hbase client update table by using put/delete command.
+
+-->When hbase client passes put/delete command, 
+	HBASE need to know which region it is supposed to write and 
+	which region server manages that region.
+-->Since row keys are sorted, its easy to identify region and region server
+
+
+HBASE client 1st asks -->Zookeeper(regarding root table details)
+	     2nd asks -->ROOT (Regarding metatable details)
+	     3rd asks -->META table (Regarding region and region server details)
+	     4th --> stored meta data retrived for faster processing in future
+	     5th --> inserted or modified the data and stored the new data in memstore
+
+-->Data in memstore sorted in the same maner as in a Hfile.
+
+LOADING data into HBASE table-
+-----------------------------
+Apache Flume
+Apache Sqoop
+Apache Pig
+Apache Hive
+Map Reduce
+HBASE APIs
+
+RETRIEVE data from HBASE-
+-------------------------
+Apache Pig
+Apache Hive
+Map Reduce
+HBASE APIs
+Cloudera Impala
+ 

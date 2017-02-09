@@ -1,0 +1,64 @@
+loading data into HBASE table through sqoop-
+-------------------------------------------
+
+sqoop import --connect jdbc:mysql://localhost/employees --username root --password root --table departments --hbase-table departments_sqoop --column-family data
+
+--HBASE doesn't allow empty values from source columns to be inserted as columns in HBASE table.
+--If all columns in RDBMS table other than the primery kecy has NULL values, sqoop skips all those columns, which results in skipping such rows.
+
+--To overcome the above scenario, set sqoop.hbase.add.row.key = true,
+
+sqoop import -Dsqoop.hbase.add.row.key = true --connect jdbc:mysql://localhost/employees --username root --password root --table departments --hbase-table departments_sqoop --column-family data
+
+
+Loading HBASE using Pig-(When some transformation or filters required for data)
+-----------------------
+
+Objective-
+--------
+NYSE data- Load all stocks whose high price of the day was greater than 10
+
+Pig script to find the required stocks:-
+---------------------------------------
+
+hdfsdata = LOAD '/nysefull/NYSE_daily_prices_A.csv' using PigStorage(',') AS 
+	(exchange:chararray,symbol:chararray,date:chararray,open:chararray,high:float,low:float,close:float,volume:long,adjclose:float);
+filtered = FILTER hdfsdata BY high > 5;
+
+Pig script to load data into HBase table:
+-----------------------------------------
+hdfsdatawithkey = FOREACH filtered GENERATE CONCAT(symbol,date),*;
+
+STORE hdfsdatawithkey  INTO 'hbase://nysedaily' USING 
+org.apache.pig.backend.hadoop.hbase.HBaseStorage ('data:exchange_hbase,data:symbol_hbase,data:date_hbase,data:open_hbase,
+					data:high_hbase,data:low_hbase,data:close_hbase,data:volume_hbase,data:adjclose_hbase');
+
+--1st key in pig relation will be considered as key values in HBASE table.In above code, exchange_hbase will be the row key of HBASE
+
+
+Using HBASE as a source in pig script-
+-------------------------------------
+
+hbasedata = LOAD 'hbase://nysedaily' USING org.apache.pig.backend.hadoop.hbase.HBaseStorage(
+		'data:exchangename,data:symbol,data:high,data:low','-loadKey true'
+		)
+		AS (id,exchangename_pig:chararray,symbol_pig:chararray,high_pig:chararray,low_pig:chararray);
+
+-->'-loadKey true' property signifies row key should also be part of pig relation
+
+
+--> Hive HBase integration is achieved through the use of what is called as a Storage Handler which makes it possible to allow Hive to access data stored and managed by other system in a modular, extensible fashion.
+
+-->For integration with HBase, HBaseStorageHandler is used.
+--> HBaseStorageHandler basically registers the HBase table with the Hive metastore.
+--> HBaseStorageHandler delegates the interaction with HBase table to HiveHBaseTableInputFormat and HiveHBaseTableOutputFormat.
+
+Loading data into HBase table using Hive
+----------------------------------------
+
+Create table nyse_hive
+(rowkey_hive STRING, exchangename STRING,symbol STRING,date STRING,high FLOAT,low FLOAT,close FLOAT,volume INT,adjclose FLOAT)
+
+STORED BY 'org.apache.hadoop.hive.hbase.HBaseStorageHandler'
+
+WITH SERDEPROPERTIES ()
