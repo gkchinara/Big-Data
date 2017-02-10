@@ -1,0 +1,224 @@
+pig data type-
+
+	Scalar
+	Complex(Maps,Tuples,Bags)
+
+Map:
+
+['chararray-key1'#value1,'chararray-key2'#value2]
+
+value:can be complex types
+key:chararray
+
+EX-
+['Company'#Microsoft,'Employee'#10000]
+
+Tuple(Row in sql)
+-----------------
+
+('physics',94,'A+','Pass')
+
+Bag(Unordered collection of tuple)
+----------------------------------
+{('physics',94,'A+','Pass')}
+{('physics',94,'A+','Pass'),('physics',25,'A-','Fail')}
+
+
+Reletional Operator and schemas
+-------------------------------
+lines=LOAD 'pig/wcinput';
+
+lines: reletion that data is loaded into
+
+describe lines;
+schema unknown
+
+lines=LOAD 'pig/wcinput' as (line);
+describe lines;
+lines:{line: bytearray}
+#By default pig will take the field as byte array if not explicitly defined
+lines=LOAD 'pig/wcinput' as (line:chararray);
+
+#By default pig will check for the path with \t delimited file
+#If no tab delimiter is found , then entire record is treated as one field
+# If our file is having different delimiter, then we need to use built-in function to do the same
+
+nyse_dividends = LOAD 'pig/NYSE_dividends' as (exchange, symbol, date,dividends:float);
+#above will fetch only 3 fileds others will be discarded
+#If we willl add extra field which is not present in data file, it will also populated as null
+
+Referencing fields by name
+--------------------------
+nyse_filtered = FILTER nyse_dividends BY dividends==0;
+
+nyse_lower = FOREACH nyse_filtered GENERATE LOWER(symbol);
+
+nyse_lower = FOREACH nyse_filtered GENERATE LOWER(symbol) AS symbol_lower;
+
+
+#If schema is not known, then we need to use $0,$1,... for data extraction
+nyse_daily = LOAD '/pig/NYSE_daily';
+price_change= FOREACH nyse_daily GENERATE $6-$3 AS close_open, $5-$4 AS high_low;
+
+describe price_change;
+{double,double}
+
+#If we want to get output as we require, then we need to do casting as below
+
+price_change= FOREACH nyse_filtered GENERATE (int)$6-$3 AS close_open, (float)$5-$4 AS high_low;
+
+Referencing ALL fields
+----------------------
+input_prices = LOAD '/pig/NYSE_daily' as (exchange,symbol,date,open,high,low,close,volume,adj_close);
+input_all = FOREACH input_prices GENERATE *;
+
+Referencing range of fields
+----------------------
+firstfew = FOREACH input_prices GENERATE ..open;
+middle = FOREACH input_prices GENERATE open..close;
+last few = FOREACH input_prices GENERATE close..;#These all results tuples
+
+Pig use cases
+-------------
+Extract,Transform and Load
+Process data from multiple sources
+Analyze web server logs
+
+
+Operations
+----------
+Joins --SORT --FILTER --UNION
+
+Loading input:Built-in function
+-------------------------------
+--HBaseStorage(To load data from HBASE table)
+
+Ex-
+nyse = LOAD 'hbase://employees' USING HBaseStorage() AS 
+	(firstname:chararray,lastname:chararray,dept:chararray)
+
+--PigStorage(If don't specify function to load data this is used, parameter is needed to define different delimiter)
+
+divs=load '/pig/NYSE_dividends.csv' using PigStorage(',');
+
+Below 3 will result the same
+----------------------------
+divs=load '/pig/NYSE_dividends.csv' using PigStorage('\t');
+divs=load '/pig/NYSE_dividends.csv' using PigStorage();
+divs=load '/pig/NYSE_dividends.csv' ;
+
+--TextLoader
+
+Read lines of text and load each line into a tuple.
+divs = load '/pig/NYSE_dividends.csv'using TextLoader();
+
+--Output Storing 
+1.DUMP
+2.STORE(physically store processed data)
+
+STORE divs INTO 'pig/divs';--output will be part-m file in the above directory
+
+STORE divs INTO 'pig/divs' using PigStorage(',');--Store data as a comma separated file
+
+STORE divs INTO 'hbase://tbldivs' using PHBaseStorage();--1st column should match the row key in Hbase table
+
+Relational operators
+--------------------
+1) FOREACH
+----------
+last few = FOREACH input_prices GENERATE close..;
+last few = FOREACH input_prices GENERATE $1,$2;
+last few = FOREACH input_prices GENERATE ($1/$2)*100;
+
+binary conditions
+
+last few = FOREACH input_prices GENERATE $1,$2;
+upOrDown = FOREACH input_prices GENERATE (($1>$2)?'Up':'Down');
+
+nested condition
+
+upOrDown = FOREACH input_prices GENERATE $1,$2,(($1==$2)?'No change':(($1>$2)?'Up':'Down'));
+
+FILTER(filters records with condition)
+--------------------------------------
+last few = FILTER input_prices by $1 < 50;
+#non of reletional operator can be applied to bag data type
+last few = FILTER input_prices by ($1-$2)/100 < 50;
+
+Filtering fileds starting with 'JA'
+
+startswithJA = FILTER input_prices by symbol MATCHES 'JA.*';
+startswithJA = FILTER input_prices by symbol NOT MATCHES 'JA.*';
+
+
+Null mathemetical operation in pig
+----------------------------------
+1+null = null
+null-100=null
+null*100=null
+null/100=null
+Comparision operators:
+--------------------
+1==null    ->null
+null>1     -->null
+null==null -->null
+null<=1?true:false -->null
+
+grouping:All nulls grouped together
+--------
+
+ISNULL(field): Checks if the value of a field is null and returns true or false
+
+Ex- (ISNULL(close)?0:((close>1)?1:-1))
+
+GROUP(Similar to group in SQL)
+------------------------------
+#Collects record together using a key
+
+Difference between GROUP operation in SQL and Pig
+-------------------------------------------------
+SQL: Group by clause feeds directly into aggregate functions
+Ex-
+select dept,count(*) as empperdept from employee GROUP BY dept;
+
+Pig:No connection between GROUP and aggregate function
+
+grunt> input_daily= LOAD 'pig/NYSE_daily' AS (exchange,symbol);
+grunt> grouped = GROUP input_daily BY symbol;
+grunt> describe grouped;
+
+op- grouped:{group:bytearray,input_daily:{(exchange:bytearray,stock:bytearray)}}
+             #Key#                #data#
+
+cnt= FOREACH grouped GENERATE group,COUNT(input_daily);
+STORE grouped INTO 'user/grouped';
+
+grunt> grouped = GROUP input_daily BY (exchange,symbol);
+grunt> avgdividend = FOREACH grouped GENERATE group,AVG(input_daily.dividends) AS avgdividend;
+
+ORDER(SORTS the order)
+----------------------
+grunt> orderbydate = ORDER input_daily BY date,symbol;--no paranthesis required for multiple inputs
+grunt> orderbydatedesc = ORDER input_daily BY date DESC,symbol;
+
+Sort based on
+-------------
+
+numerical fields >> numerically
+chararray fields >> lexically
+bytearray        >> lexically
+******NULLS are considered smaller than all other values
+*****Sorting maps,tuples and bags produce errors
+
+DISTINCT:(Remove duplicate records uses reduce phase for this)
+---------
+dist = DISTINCT input_daily;
+
+unlike SQL where we can be performed in specific columns, in Pig it can be applied only on all fields in reletion
+
+LIMIT:(to limit number of records)
+---------------------------------
+
+tenrecs = LIMIT input_daily 10;(Pig doesn't guarrenty the order and can return different records each time it fired)
+# it will still read all records and pass record specified in LIMIT to output.
+
