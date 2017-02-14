@@ -108,13 +108,17 @@ income_group_generate = FOREACH exclude_fst GENERATE *,
  lead_data = FOREACH exclude_fst GENERATE statcd_hh_mem1..statcd_hh_mem8;
  DUMP lead_data;
  
- count_lead_data = FOREACH exclude_fst GENERATE *,(((statcd_hh_mem1 IS NULL)?0:1)+((statcd_hh_mem2 IS NULL)?0:1)+((statcd_hh_mem3 IS NULL)?0:1)+
+ --count_lead_data = FOREACH exclude_fst GENERATE *,(((statcd_hh_mem1 IS NULL)?0:1)+((statcd_hh_mem2 IS NULL)?0:1)+((statcd_hh_mem3 IS NULL)?0:1)+
 												((statcd_hh_mem4 IS NULL)?0:1)+((statcd_hh_mem5 IS NULL)?0:1)+((statcd_hh_mem6 IS NULL)?0:1)) AS lead_cnt;
+
+ count_lead_data = FOREACH exclude_fst GENERATE *,(((statcd_hh_mem1 == '')?0:1)+((statcd_hh_mem2 == '')?0:1)+((statcd_hh_mem3 == '')?0:1)+
+												((statcd_hh_mem4 == '')?0:1)+((statcd_hh_mem5 == '')?0:1)+((statcd_hh_mem6 == '')?0:1)) AS lead_cnt;
 
  fetch_lead_cnt = FOREACH 	count_lead_data GENERATE lead_cnt;
  dump  fetch_lead_cnt
 --count_lead_data = FOREACH exclude_fst GENERATE *,(ISNULL(statcd_hh_mem5)? 0 : 1) as cnt;
---count_lead_data = FOREACH exclude_fst GENERATE *,(statcd_hh_mem5 IS NULL ? 0 : 1) as cnt;
+--count_lead_data = FOREACH exclude_fst GENERATE (int)statcd_hh_mem5,(statcd_hh_mem5 != '' ? 1 : 0) as cnt;
+
 
  
  
