@@ -120,7 +120,21 @@ income_group_generate = FOREACH exclude_fst GENERATE *,
 --count_lead_data = FOREACH exclude_fst GENERATE (int)statcd_hh_mem5,(statcd_hh_mem5 != '' ? 1 : 0) as cnt;
 
 
+ B------
+------------
+
+ total_lead_data_grp = Group count_lead_data All;
+ total_lead_data = FOREACH total_lead_data_grp GENERATE SUM(count_lead_data.lead_cnt);
  
+ 
+  lead_data = FOREACH exclude_fst GENERATE statcd_hh_mem1..statcd_hh_mem8;
+  B = foreach lead_data generate FLATTEN(TOBAG(*)) as leads;
+  
+  C= GROUP B BY leads;
+  D= foreach C generate group,COUNT(B.leads);
+  
+  foreach B generate (chararray)com.stack.overflow.udf() as (leads:chararray);
+
  
  
 
