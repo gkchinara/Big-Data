@@ -1,0 +1,332 @@
+Processing data using apache pig
+---------------------------------
+
+Joins--
+-----
+Based on key.
+D1 = load 'input1' as (x,y);
+D2 = load 'input1' as (x,z);
+joined = Join D1 BY x,D2 by x;
+
+#running pig in local mode doesn't provide nos of records output where as it will be displayed whenever it will be running in hdfs
+
+Join based on multiple keys
+---------------------------
+joined = Join D1 BY (K1,K2),D2 BY (K1,K2);
+
+JOIN multiple dataset
+------------------------
+D1 = load 'input1' as (x,y);
+D2 = load 'input2' as (u,v);
+D3 = load 'input3' as (e,f);
+joined = Join D1 BY x,D2 by u,D3 by e;
+
+How to access fields after a join
+----------------------------------
+ex-Find list of customers who have placed more than 25 orders
+
+grouped = GROUP joined BY customers::cutomerid;--need to define the reletion when the column name is having in both reletion getting joined
+filtered = FILTER grouped BY COUNT(joined) > 25;
+
+
+types of joins
+---------------
+OUTER JOINS(Records that don't have match will be recorded.Null values are populated for missing fields.)
+------------
+LEFT,RIGHT, FULL
+
+LEFT OUTER JOIN(Records from left will be included even if they don't have match in right)
+------------------
+Syntax-
+------
+leftouterjoin = JOIN D1 BY id LEFT OUTER,D2 BY id;
+
+RIGHT OUTER
+-----------
+Syntax-
+------
+rightouterjoin = JOIN D1 BY (id1,id2) RIGHT OUTER,D2 BY (id1,id2);
+
+
+FULL OUTER(records from both side will be taken even if no match)
+----------
+
+fullouterjoin = JOIN D1 BY id FULL OUTER,D2 BY id;
+
+#Pig needs to populate nulls for the data set on the other side when there is no match.
+#So the schema for that data set is mandatory.
+#for LEFT OUTER join: Schema for right is mandatory
+#for RIGHT OUTER join: Schema for left is mandatory
+#for FULL OUTER join: Schema for both is mandatory
+#null key values will not be matched
+
+COGROUP
+--------
+#Group two or more dataset by a column and join based on the same column.
+#COGROUP on one dataset is same as GROUP.
+#COGROUP on multiple datasets results in a record with a key and one bag per dataset.
+
+Ex-
+cogrouped = COGROUP orders BY customerid,customers BY customerid;--Will give all orders for specific customer id
+
+UNION--
+-----
+Used to concatenate two dataset
+
+U1 = LOAD 'input1';
+U2 = LOAD 'input2';
+
+unioned = UNION U1,U2;
+
+Schema is same for both dataset
+-------------------------------
+U1 = LOAD 'input1' AS (f1,f2);
+U2 = LOAD 'input2' AS (f3,f4);
+
+unioned = UNION U1,U2;
+describe unioned;
+o/p-unioned :(f1:bytearray,f2:bytearray)
+result will be same schema as input and field names will be as of 1st dataset
+
+Schema is different-
+-------------------
+U1 = LOAD 'input1' AS (f1,f2);
+U2 = LOAD 'input2' AS (f3,f4,f5);
+
+unioned = UNION U1,U2;
+describe unioned;
+o/p-Schema for unioned unknown
+
+Nos of fields are same, but datatypes are different
+---------------------------------------------------
+U1 = LOAD 'input1' AS (f1:int,f2:double);
+U2 = LOAD 'input2' AS (f3:long,f4:float);
+
+unioned = UNION U1,U2;
+describe unioned;
+o/p-unioned: {f1:long,f2:double}
+#Pig will handel by escalating the datatype
+double>float>long>int>bytearray
+tuple>bag>map>chararray>bytearray
+
+
+Data types are different and incompatible
+-----------------------------------------
+U1 = LOAD 'input1' AS (f1:int,f2:double);
+U2 = LOAD 'input2' AS (f3:chararray,f4:float);
+
+unioned = UNION U1,U2;
+describe unioned;
+o/p-fails cannot cast 
+
+How to union the above?
+
+U1 = LOAD 'input1' AS (f1:int,f2:double);
+U1a = FOREACH U1 GENERATE (chararray)f1,f2;
+U2 = LOAD 'input2' AS (f3:chararray,f4:float);
+
+unioned = UNION U1a,U2;
+describe unioned;--this will work
+
+
+U1 = LOAD 'input1' AS (f1:int,f2:double);
+U2 = LOAD 'input2' AS (f2:float,f4:float);
+
+unioned = UNION ONSCHEMA U1,U2;--Using ONSCHEMA matching of field done by name
+describe unioned;
+O/p- unioned:{f1:int,f2:double,f3:float}
+
+ONSCHEMA
+--------
+-->matching of field done by name
+-->Field doesn't match, then it is added to output
+-->All input must have schemas for ONSCHEMA to work
+
+RANK
+-----
+-->Used to rank each tuple in a reletion.
+Ex-
+sales_data = LOAD 'rank' AS (name,sales);
+ranked = RANK sales_data;
+dump ranked;
+
+ranked = RANK sales_data BY sales DESC;--It will have gaps
+ranked = RANK sales_data BY sales DESC DENSE;--Will avoid gaps
+top3 = FILTER ranked BY rank_sale<=3;
+
+Parameter Substitution
+----------------------
+-->Pig Latin scripts will have data elements that change dynamically, like a Date field
+-->Scripts should not be modified when such field value change
+-->Pig provide options to pass values as parameters.This is called "Parameter Substitution"
+-->Uses String replacement functionality
+
+Methods
+---------
+Pass parameters on command line.
+Pass parameters from a file.
+
+
+Pass parameters on command line
+-------------------------------
+input_daily = load 'pig/NYSE_daily' as (schema details??);
+stock_prices = FILTER input_daily by date =='$date';
+
+Save the above two lise as paramtest.pig
+Command
+---------
+pig -p date=3/17/2009 paramtest.pig
+
+Multiple parameter
+pig -p <param1>=<value1> -p <param2>=<value2> scripts.pig
+
+Parameters file
+---------------
+#Used when more than few parameters need to be configured
+#One parameter one line
+
+
+param1=value1
+param2=value2
+param3=value3
+
+Find stock prices by date and greater than a certain threshold value?:
+--------------------------------------------------------------------
+
+input_daily = load 'pig/NYSE_daily' as (schema details??);
+stock_prices = filter input_daily by date=='$date' AND close>$threshold;
+dump stock_prices;
+
+param_file
+----------
+date=3/18/2009
+threshold=5
+
+Command to run
+---------------
+pig -param_file params_file parametest-file.pig
+
+
+
+
+---------------------------------------------------------------------------------------------------------------------------------
+
+Pig User defined functions
+------------------------
+
+2 catagories
+->Built-in
+->Custom UDF
+	->Function that comes with Pig
+	->Function written by other users
+	->Writing own functions
+Built-in
+---------
+count(),AVG(),SUM()--computs count and avg of a group function in a bag(unordered list of tuples)
+COUNT_STAR()--count alongwith NULLs
+CONCAT()--concatenate two similiar fields
+DIFF--Used to compare two fields in a tuple.Tuples in one bag and not in other are returned in a bag
+Ex-
+bagged = FOREACH input DIFF(B1,B2);
+IsEmpty--Used to check if a bag or Map is empty.Filter empty data.
+
+Ex-FILTER input_divs BY NOT IsEmpty(date);
+
+MAX/MIN--calculates mix/min in a bag.Requires group stmt
+
+SIZE--Used to compute the number of elements of any Pig Data type.Includes NULL values.
+      (for int it will return 1, for char and tuples it returns nos of chars)
+TOTUPLE,TOBAG,TOMAp,TOP--some other built in function
+
+Eval, Math,String,Date,Tuple,Load/Store functions
+
+User Defined functions
+----------------------
+-->Functions that come with Pig
+-->Functions written by other users
+-->Writing your own functions
+
+Piggy Bank
+-----------
+--Pig's repository of user-contributed functions
+--Piggybank functions are distributed as part of Pig distributions, but not built-in
+--Functions contributed as is.
+--Bugs or missing needs to be corrected by us.
+
+Registering UDF's
+-----------------
+register '/home/Jig11890/pig/contrib/piggybank/java/piggybank.jar';--tells pig that it needs to include the code from the piggybank.jar file
+						provided when it produce a jar to send to hadoop,pig opens all registered jar files and send them to hadoop to run your jobs
+input LOAD '/pig/reverse.txt';
+reversed = FOREACHinput GENERATE
+org.apache.pig.piggybank.evaluation.string.REVERSE($0);
+
+or 
+
+define reverse org.apache.pig.piggybank.evaluation.string.Reverse();
+reversed = FOREACHinput GENERATE reverse($0);
+
+using command line
+------------------
+pig -Dudf.import.list=org.apache.pig.piggybank.evaluation.string register_script.pig
+
+register_script.pig
+-------------------
+register '/home/hduser/pig/contrib/piggybank/java/piggybank.jar';
+input LOAD '/pig/reverse.txt';
+reversed = FOREACHinput GENERATE Reverse($0);
+
+register '/home/Jig11890/piggybank.jar';
+
+UDF:Apache Data Fu(functions written by pig users not registered by piggybank)
+------------------------------------------------------------------------------
+Apache Data Fu:Collection of libraries for working with large-scale data in Hadoop
+https://github.com/linkedin/datafu
+
+It has UDFs for statistics,Bag Operations ,sampling,estimation,Hashing
+
+Write your own UDFs
+-----------------------
+
+Eval:Typically used to alter a field in the data pipeline such as parsing a string.
+Filter:Used to filter a record in data pipeline.
+Group/Aggregate:Used to built aggregation functions.
+LOAD/STORE:Used to control how data is loaded into or stored out of Pig.
+
+Factorial
+-------------
+
+java code
+---------
+public class Factorial extends EvalFunc<Long>{
+	public Long exec(Tuple input) throws IOException{
+	try{
+	
+		int fact=(Integer)input.get(0);
+		long result = 1;
+
+		for(int i=1;i<=fact; i++){
+		result = result*i;
+		}
+		return result;
+	   }
+
+	   catch(Exception e){
+		throw new IOException("Something wrong happened!",e);
+		}
+
+	}
+}
+
+-------------------------------------------------------------------------------
+we need to put this code into jar files and also import pig-ver.jar
+
+Ex-factorial.jar
+
+register
+-------
+register /home/Jig11890/jars/factorial.jar
+
+fact= LOAD 'home/Jig11890/pig/factorial' as (val:int);
+result = FOREACH fact generate com.jigsaw.udfs.factorial(val);
+dump results;
