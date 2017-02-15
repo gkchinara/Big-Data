@@ -238,7 +238,9 @@ B------
   grp = GROUP F ALL;
   all_cnt = FOREACH grp generate 'key' AS key,SUM(F.cnt) as sum_all;
   all_join = JOIN F BY key,all_cnt BY key;
-  F = FOREACH E generate category,(duble)((E.cnt/E.sum_all)*100) AS percentage;
+  G = FOREACH all_join generate category,(double)(F::cnt) AS percentage,(double)(all_cnt::sum_all) AS sum,(F::cnt*100) / all_cnt::sum_all AS per;
+  
+  G = FOREACH all_join generate category,(F::cnt*100) / all_cnt::sum_all AS per;
   
 
 
