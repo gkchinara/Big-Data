@@ -1,0 +1,257 @@
+Event: Singular unit of data that can be transported like a single log entry or tweet
+Client:Produces data in form of Events
+Source:Listen for and consume events
+Channel: Mechanism by which Flume agents transfer events from their sources to their destination.
+Sink:Removes events from channnel and transmit them to next agent in flow or to event's finl destination.
+* Sinks that transmits the events to its final destination called terminal sinks.Flume-hdfs sink is example of terminal sink and regular sink if it send it to next hop destination.
+
+Java property file of Key/value pairs in hierarchical setting
+
+Allows to:
+1.Definition of flow--Mandatory
+2.Configuring individual components--Mandatory
+3.Add multiple flows in an agent
+4.Configuring multiple agents in a flow
+5.Configuring flow fan out(multiple channels to deliver event)
+
+Agent: An independent process that hosts flume components such as sources,channels and sinks and thus has the ability to receive, store and forward events to their next hop destination.
+* Agent is a independent JVM that have all flume components, and thus has ability to get store and save events.
+
+Data flow pipeline
+------------------
+
+client-->|source-->channel-->sink|
+
+		Agent
+
+Data will be available inside the agent until the sink close the transaction. Hence in case of failure as well data will not be lost.
+
+* We can have multiple surces and channels and sinks within a single flume agent.
+
+
+Configure flume agent
+-----------------------
+
+Configuring flume agent to extract data from server log file.
+------------------------------------------------------------
+
+Agent comprises Sources,Channel and Sink components.
+
+<Agent>.sources = <Source>
+<Agent>.sinks = <sink>
+<Agent>.channels = <channel>
+
+Agent:Name of our flume Agent
+Source: Name of source
+Sink:Name of sink
+Channel:name of channel
+
+Source types
+------------
+-->Avro sources
+-->Netcat, which is a TCP event source.
+-->Syslog files
+-->Exec: Execute a given Unix command that continuously produces data on the standard out.
+-->Custome:Twitter for eg.
+
+Sink types-
+----------
+-->HDFS
+-->HBASE
+-->Avro
+-->Custom
+
+Channel types--
+--------------
+-->Memory
+-->File
+-->JDBC
+-->Custom
+
+Which channel to use?
+---------------------
+-->Most recommended are Memory and file channels
+
+File Channel
+------------
+Durable:Persists event on to disk.
+When OS   crashes/reboots: Events not transfered will be there when the fulme agent restared.
+Incase of downstream failures, ability to buffer events is superior since it writes the events to the disk.
+
+
+Memory Channel:
+------------
+Volatile: stores in memory.
+When OS   crashes/reboots:Events not transfered will be lost
+Due to limited Ram availablility , incase of downstream failuers, ability tobuffer events is limited.
+Provides high throughput
+
+
+Ex-Define source,sink and channel
+
+log-to-hdfs.sources = namenode-log-source
+log-to-hdfs.sinks = hdfs-sink
+log-to-hdfs.channel = memchannel
+
+Join source and sink
+----------------------
+<Agent>.sources.<Source>.channels = <Channel>#Source can deliver to multiple channels
+<Agent>.sinks.<Sink>.channel = <Channel>#Channel can drain into a single sink
+
+Ex-
+#Join source to Channel
+
+log-to-hdfs-agent.sources.namenode-log-source.channels = memchannel;
+
+#Join Sink to Channel
+
+
+log-to-hdfs-agent.sinks.hdfs-sink.channels = memchannel;
+
+Configuring Individual Components
+--------------------------------
+General syntax
+
+<Agent>.sources.<Source>.<property> = <Value>
+<Agent>.sinks.<Sink>.<property> = <Value>
+<Agent>.channels.<Channel>.<property> = <Value>
+
+Configure source
+-----------------
+log-to-hdfs-agent.sources.namenode-log-source.type = exec
+log-to-hdfs-agent.sources.namenode-log-source.command = tail -F /home/hadoop/logs/hadoop-hduser-namenode-ubuntu.log
+
+Sink Config
+------------
+
+log-to-hdfs-agent.sinks.hdfs-sink.type = hdfs
+log-to-hdfs-agent.sinks.hdfs-sink.path = hdfs://localhost:54310/flume
+
+Channel config
+---------------
+log-to-hdfs-agent.channels.memchannel.type = memory
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+#To run the agent, we need to create config file in the conf folder of flume directory
+
+vi log-to-hdfs-agent.conf
+--------------------------
+
+#Define source,sink and channel
+log-to-hdfs.sources = namenode-log-source
+log-to-hdfs.sinks = hdfs-sink
+log-to-hdfs.channel = memchannel
+
+#Join source to Channel
+log-to-hdfs-agent.sources.namenode-log-source.channels = memchannel;
+
+#Join Sink to Channel
+log-to-hdfs-agent.sinks.hdfs-sink.channels = memchannel;
+
+#Configure source
+log-to-hdfs-agent.sources.namenode-log-source.type = exec
+log-to-hdfs-agent.sources.namenode-log-source.command = tail -F /home/hadoop/logs/hadoop-hduser-namenode-ubuntu.log
+
+#Sink Config
+log-to-hdfs-agent.sinks.hdfs-sink.type = hdfs
+log-to-hdfs-agent.sinks.hdfs-sink.path = hdfs://localhost:54310/flume
+
+#Channel config
+log-to-hdfs-agent.channels.memchannel.type = memory
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+#Running the agent
+#-----------------
+bin/flume-ng agent -n log-to-hdfs-agent -f conf/log-to-hdfs-agent.conf
+
+
+############################################################################################################################################################
+
+#Extracting tweets from twitterinto hadoop cluster
+--------------------------------------------------
+Twitter-->Twitter Streamming API --> Twitter Source --> Memory Channel -->HDFS Sink
+
+Prerequisites--
+-------------
+1.Twitter Account
+-->Access Key
+-->API Key
+#Create twitter application.#Create Access token
+2.Download JAR file containing the Twitter Source class
+http://files.cloudera.com/samples/flum-sources-1.0-SNAPSHOT.jar
+Place it in flume/lib folder
+
+DEfine Components
+------------------
+vi twitter-agent.conf
+
+#Define source,sink and channel
+twitter-agent.sources = twitter-source
+twitter-agent.sinks = hdfs-sink
+twitter-agent.channel = mem-channel
+
+#Join source to Channel
+twitter-agent.sources.twitter-source.channels = mem-channel;
+
+#Join Sink to Channel
+twitter-agent.sinks.hdfs-sink.channel = mem-channel;
+
+#Configure source
+twitter-agent.sources.twitter-source.type = com.cloudera.flume.source.TwitterSource
+twitter-agent.sources.twitter-source.consumerKey = <Consumer Key>
+twitter-agent.sources.twitter-source.consumerSecret = <Consumer Secret>
+twitter-agent.sources.twitter-source.accessToken = <Access Token>
+twitter-agent.sources.twitter-source.accessTokenSecret = <Access Token Secret>
+
+twitter-agent.sources.twitter-source.keyworks = hadoop,big data,analytics
+
+twitter-agent.sinks.hdfs-sink.hdfs.filePrefix = tweets
+twitter-agent.sinks.hdfs-sink.hdfs.rollInterval = 0
+twitter-agent.sinks.hdfs-sink.hdfs.rollSize = 10240000
+twitter-agent.sinks.hdfs-sink.hdfs.rollCount = 0
+
+
+#Channel config
+twitter-agent.channels.mem-channels.type = memory
+
+Configure Sink
+--------------
+twitter-agent.sinks.hdfs-sink.type = hdfs
+twitter-agent.sinks.hdfs-sink.path = hdfs://localhost:54310/flume-new/tweets
+twitter-agent.sinks.hdfs-sink.hdfs.fileType = DataStream
+
+
+
+
+
+#################################################################################################
+
+#Running the agent
+#-----------------
+bin/flume-ng agent -n twitter-agent -f conf/twitter-agent.conf
+
+#tweets will be pulled as JSON
+#A lot of small files will be created
+#Hadoop doesn't like small files, as hdfs meta data kept in memory in name node, more file we create,more ram will be used.
+ 
+#configuring the HDFS Sink further
+
+#Assign a prefix to the file when it is created
+-------------------------------------------------
+twitter-agent.sinks.hdfs-sink.hdfs.filePrefix
+Default value:FlumeData
+
+#Nos. of seconds to wait before rolling current file or writing to sink
+-----------------------------------------------------------------------
+twitter-agent.sinks.hdfs-sink.hdfs.rollInterval
+Default value:30
+
+#File size to trigger roll or writing to sink, in bytes
+---------------------------------------------------------
+twitter-agent.sinks.hdfs-sink.hdfs.rollSize
+Default value=1024
+
+#Number of events written to file before it rolled or write to sink
+twitter-agent.sinks.hdfs-sink.hdfs.rollCount
+Default value:10

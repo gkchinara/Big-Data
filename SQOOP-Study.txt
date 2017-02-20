@@ -1,0 +1,12 @@
+Options to import data from Databases
+-------------------------------------
+Manually:Export into files and then load into HDFS
+Write prog using respective APIs
+Direct acces to data in databse from Mapreduce
+
+Sqoop-SQL+Hadoop
+
+sql-->SQOOP-->Hadoop
+
+# Sqoop neednot be installed at all node of cluster(its not a cluster service) and can be installed in a single node or on a non hadoop cluster as well.
+
