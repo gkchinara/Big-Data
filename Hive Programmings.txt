@@ -1,0 +1,254 @@
+Hive Views-
+------------
+#View allows queryy to be saved and treated just like a table.
+#View is a logical construct and doesn't store data
+#Used to simplify queries.
+
+Syntax to create view-
+
+CREATE VIEW ViewName AS
+SELECT <cols>
+FROM <table>
+WHERE <predicate>
+
+**WHERE is optional
+
+Ex-
+CREATE VIEW vwSample AS SELECT exchangename,symbol,date,opencloseadj FROM daily LIMIT 100;
+
+DROP view vwSample;
+DESCRIBE vwSample;#table type:VIRTUAL_VIEW
+
+Querying a view is same as quering a table.
+#If a query references a view, the definition of the view is combined with the rest of the query by Hive's query planner.
+#No storage allocated to view
+#A view's name must be unique compaired to all other table and view names in the same database.
+
+#When a view and query that uses it both contain an order by or LIMIT clause, the view's clauses are evaluated before the using query clauses.
+Ex-
+
+CREATE VIEW vwSample AS SELECT exchangename,symbol,date,opencloseadj FROM daily LIMIT 100;
+SELECT * from vwSample LIMIT 200;
+*Returns a maximum of 100 rows.
+
+#View do not "materalize" or store data.
+#The definition of the view is frozen to any changes to tables that view uses.
+#Query using the view can fail, if the references table/column doesn't exist.
+
+Using views to reduce query complexity
+--------------------------------------
+#Queries can become long and/or complecated.
+#Use views to hide complexity
+#replace query with a view
+#Replace parts of the query with a view breaking it down into small manageable pieces.
+#Makes it easier for end users to build queries and makes queries more readable.
+
+
+Example:Query to find changes in price
+--------------------------------------
+
+SELECT CASE WHEN ROUND(openclose["close"]-openclose["open"],2)>0 THEN "Up"
+	    WHEN ROUND(openclose["close"]-openclose["open"],2)<0 THEN "Down"
+ 	    ELSE "NO CHANGE" END AS change,count(*) 
+FROM daily
+WHERE date='2/27/2009'
+GROUP BY CASE WHEN ROUND(openclose["close"]-openclose["open"],2)>0 THEN "Up"
+	    WHEN ROUND(openclose["close"]-openclose["open"],2)<0 THEN "Down"
+ 	    ELSE "NO CHANGE" END;
+
+To rewrite using views,
+-------------------------
+
+CREATE VIEW vwPriceChange AS
+SELECT symbol,date,CASE WHEN ROUND(openclose["close"]-openclose["open"],2)>0 THEN "Up"
+	    WHEN ROUND(openclose["close"]-openclose["open"],2)<0 THEN "Down"
+ 	    ELSE "NO CHANGE" END AS changetype FROm daily;
+
+Revised Query
+-------------
+
+SELECT changetype,count(*) FROm vwPriceChange WHERE date='2/27/2009' GROUP BY changetype LIMIT 10;
+
+
+HIVE Joins-
+-----------
+INNER Joins
+------------
+#Only those records are retained that have a match in every table being joined.
+Query to find out which companies issue dividends
+-------------------------------------------------
+SELECT a.symbol,a.openclose["close"] from daily a JOIN dividends b ON a.symbol=b.symbol AND a.date = b.date;
+
+***Hive doesn't currently support using OR betwen predicates in ON clauses.
+
+SELECT a.symbol,a.openclose["close"] from daily a JOIN dividends b ON a.symbol=b.symbol AND a.date = b.date
+WHERE a.openclose["close"]>=10;
+
+#oNLY EQUI-JOINS ARE ALLOWED IN hIVE
+HENCE THE BELOW WILL FAIL
+
+SELECT a.symbol,a.openclose["close"] from daily a JOIN dividends b ON a.symbol=b.symbol AND a.date <= b.date
+WHERE a.openclose["close"]>=10;
+
+#Join a table to itself called self-join
+#we can also join more than two tables together
+
+Ex-
+SELECT a.symbol,a.openclose["close"],b.dividend,c.economy 
+from daily a 
+JOIN dividends b 
+ON a.symbol=b.symbol AND a.exchangename = b.exchangename
+JOIN stockexchanges c 
+ON b.exchangename = c.exchangename
+WHERE a.openclose["close"]>=10;
+
+#Hive always go from left to right while joining
+# We can alos join table with a query
+
+# Hive assumes that the last table in the query is the largest
+
+#It attempts to buffer the tables and then stream the last table through, while performing joins on individual records.
+#Similar to replicated join in pig
+
+LEFT Outer join
+---------------
+#All records from left hand table will be retained, even if there is no match.
+#If right hand table doesn't have a match , NULL is used for each column in right hand table.
+Syntax-
+Select a.symbol,a.openclose["close"],b.dividend
+FROm daily a 
+LEFT OUTER JOIn dividends b 
+ON a.symbol = b.symbol AND a.date=b.date
+LIMIT 100;
+
+#WHERE conditions are evaluated after the JOIn is performed.
+
+RIGHT OUTER JOIN
+------------------
+Select a.symbol,a.openclose["close"],b.dividend
+FROm daily a 
+RIGHT OUTER JOIn dividends b 
+ON a.symbol = b.symbol AND a.date=b.date
+WHERE a.openclose["close"]>=10
+LIMIT 100;
+
+#All records from right hand table will be retained , even if there is no match
+#If right hand table doesn't have a match in left hand table, NULL is used for each column in the left hand table
+
+
+
+Hive:File Format vs. Record Format
+----------------------------------
+File format: How the file gets stored/serialized on the disk.
+Record format:How data is organized?
+  #Text :Row Delimited,Fields Terminated By etc
+  #JSON,CSV,XML etc
+
+Text format is convenient for sharing data with other tools such as Pig, but is not efficient in terms of storage space or performance.
+
+Alternatives
+------------
+Sequence Files
+----------------
+
+#Sequence files are flat files consisting of binary key-value pairs.
+#Standard format supported by Hadoop and is a reasonale choice when it comes to sharing files between Hive 
+ and other Hadoop -reler=ted tools such as Pig.
+
+Syntax-
+
+CREATE TABLE hiveclass.companiesSEQ(
+name STRING,
+marketcap FLOAT,
+countries ARRAY <STRING>,
+cxos MAP<STRING,STRING>,
+hqaddress STRUCt <street:STRING,city:STRING,state:STRINg,zip:INT>)
+STORED AS SEQUENCEFILE;
+
+
+Draw back:
+-->Sequence files saves a complete row as a single binary value. 
+   So, Hive has to read a full row and decompress it even if only one column is being requested.
+
+Row store vs. Column store(Check PPT)
+---------------------------
+
+data storage: Row oriented storage:
+
+001:10000,John,IT,100000;002:10001,Megan,Finance,120000;003:12000,Megan,Accounts,120050;
+
+001,002...meatadata
+-->Efficient when retriving all/most columns from a table
+-->Not efficient when only afew columns need to be retrived, as it reads unnecessary data. Unnecessary I/O means poor performance.
+
+
+Column oriented Storage:
+
+10000:001,10001:002,10002:003,10003:004,10004:005;John:001,Megan:002,Jessica:003,Roy:004,Chris:005;
+IT:001,Finance:002,Accounts:003,004,Operations:005;10000:001,12000:002,10000:003,12000:004,10000:005
+
+#Operations such as aggregations on few columns run faster
+#Only required columns are scanned.
+
+RCFILE Format
+---------------
+
+#RCFile stands for Rcord columnar File.
+#Data placement structure that determines how to store reletional data on cluster.
+#Specifically designed for systems using the MapReduce framework.
+#Co-developed by Facebook.
+
+Goals
+-----
+#Fast data loading
+#Fast query processing 
+#Highly efficient storage space utilization
+#adaptibility to dynmic data access patterns
+
+How RC File stores data on a disk
+---------------------------------
+#Stores columns of table ina record columnar way.
+#Splits rows horizontally into row splits/groups.
+#Then vertically partitions each split/group in a columnar way.
+
+Example--
+
+Row group 1(ceck ppt for better understanding)
+-----------------------------------------------
+10000:001,100001:002,100002:003;
+John:001,mag:002,gess:003;
+IT:001,Finance:002,003;
+1000000:001,120000:002,210000:003;
+
+
+Row group 2
+-----------------------------------------------
+10003:004,100004:005;
+John:004,mag:005;
+Accounts:004,Operations:005;
+1000000:004,120000:005;
+
+
+#With horizontal partitioning, RCFile places all columns of a row in a single machine 
+ and thus ca eliminate the extra network cost when constructing a row.
+#Compression on columns is typically very efficient, especially when the column has low cardinality(only afew distinct entries)
+#Some column-oriented stores don't physically need to store null columns.
+
+
+Syntax:
+-------
+CREATE TABLE dailyRC(
+name STRING,
+symbol STRING,
+date STRING,
+openclose MAp<STRING,FLOAT>,
+highlow STRUCt<high:FLOAT,low:FLOAT>,
+volume INT
+)
+STORED AS RCFILE;
+
+Loading data into a Hive table using RCFile format:
+#Use INSERt..SELECT statement to load data into a table that uses RCFile format.
+***#LOAD statement cannot be used
+Syntax :
+INSERT OVERWRITE TABLE dailyRC SELECT * from daily;

@@ -10,3 +10,240 @@ sql-->SQOOP-->Hadoop
 
 # Sqoop neednot be installed at all node of cluster(its not a cluster service) and can be installed in a single node or on a non hadoop cluster as well.
 
+List databse in mysql Server
+------------------------------
+
+sqoop list-databases --connect jdbc:mysql://localhost/ --username root --password root
+
+List Tables in mysql databse
+------------------------------
+
+sqoop list-tables --connect jdbc:mysql://localhost/sample --username root --password root
+
+Import Table from a mysql databse
+---------------------------------
+
+sqoop import --connect jdbc:mysql://localhost/sample --username root --password root --table departments
+
+
+
+Sqoop import behind the scenes
+-------------------------------
+
+node on which   --------------->mysql server(to fetch metadata)
+SQOOP installed     JDBC
+   |
+   |
+  Hadoop Cluster(Submit mapreduce Job)
+
+
+#Sqoop uses the primary key column to import data from a reletional table.
+# If we don't specify where to store the imported data in sqoop command, sqoop will create a drectory with same name as that of table being imported inside user's home directory.
+# Multiple files will be created at time of sqoop import as sqoop imports data in parallel from most of database by spinning multiple map jobs in parallel.
+
+#sqoop spins multiple map tasks and imports data in parallel.
+#Each mapper retrives a subset of rows.
+#default mappers are 4 hence 4 files.
+#we can specify nos of mappers we need.
+
+--------------------------------------------------------------
+#How sqoop decides which row retrived by which mapper.
+ #Sqoop uses splitting column, by default primary key
+#Uses low and high values of the splitting column.
+#Splits like (High value-Low Value)/Number of mappers
+
+Example:
+---------
+Table: Employees
+Primary Key(Column empid): Low =1 , high=1000(gets the details by running a boundry value query)
+Default mappers:4
+
+select * from employees where empid>=1 and empid<=250
+
+
+-------------------------------------------------------------------
+
+Non-uniform primary key?
+
+Table:employees
+
+primary key(column id) : 1,2,10,100 
+Default mappers:4
+
+Queries:
+select * from employees where empid>=1 and empid<=25
+select * from employees where empid>=25 and empid<=50
+select * from employees where empid>=51 and empid<=75
+select * from employees where empid>=76 and empid<=100
+
+Rows processed by mappers:
+--------------------------
+
+Mapper  	IDs
+------  	---
+Mapper1 	1,2,10
+Mapper2 	None
+Mapper3 	None
+Mapper4 	100
+#this will be unbalanced task.
+#this can be avoided by using a different column which might have the corrrect distribution.
+
+#Split by used to do that
+
+--split-by alt_it
+
+#sqoop cannot split by multi column split
+
+
+Incremental import using sqoop
+------------------------------
+Append mode-for tables where rows only gets inserted
+Last modified mode- For tables where rows get inserted as well as updated.
+
+sqoop import --connect jdbc:mysql://localhost/sample --username root 
+--password root --table employees --split-by alt_id --incremental append
+check-column alt_id --last-value 100
+
+#check-column is the column needs to be checked for newly added data
+#last-value contains last value imported into hadoop before incremental
+
+#if we get safemode error, we need to move jobtracker out of safe mode
+hadoop dfsadmin -safemode get
+hadoop dfsadmin -safemode leave
+
+-------------------------------------------------------------
+
+#When table has inserts as well as updates(last modified mode)
+
+sqoop import --connect jdbc:mysql://localhost/sample --username root 
+--password root --table employees --split-by alt_id --incremental lastmodified
+check-column ModifiedDate --last-value "2014-07-01 00:00:00.0"
+
+#We need a column in table which will store last update datetime to use above.
+
+#problem with sqoop is when we use last midified mode, it expect target output directory doesn't exists
+#Workaround for the abouve is we need to move the previously imported data to a temp folder and then do a import
+
+How to preserve last value?
+---------------------------
+
+*****#Sqoop will give the --last-value in the output in output log of import and we need to use that value next time we import the data.
+#Sqoop metastore allows us to store job definitions,and to easily run them anytime
+#sqoop metastore allows a sqoop job to preserve the last successfully retrived value
+
+#sqoop command can be stored as a job(import-employees job example)
+-------------------------------------------------------------------
+sqoop job --create import-employees --import --connect 
+jdbc:mysql://localhost/sample --username root --password root 
+--table employees --incremental append
+--check-column emp_id --last-value 104
+
+#Above command will store the above job inside sqoop metastore
+#We can list all sqoop jobs as below
+sqoop job --list
+help sqoop job
+
+sqoop job --show import-employees # definition will be displayed as java properties file
+
+To execute
+----------
+sqoop job --exec import-employees
+
+#with the sqoop job we don't need to handel last modified date manually, sqoop metastore will handel this auto matically.
+
+-----------------------------------------------------------------------------------------------------------------------------------
+
+
+IMPORT Subset of data
+------------------------
+sqoop import --connect jdbc:mysql://localhost/sample --username root 
+--password root --table employees --where "alt_id > 3" 
+target-dir /usr/hdusr/sqoop-import
+
+** if we don't want to specify primary key for import, we can giva a command as -m 1, which will take all data in one mapper job
+
+
+#Password Protection
+------------------------
+Not safe to type passsword in command line
+
+Two option--
+1) -P parameter: Sqoop will read password from command line
+
+Ex-
+sqoop list-databases --connect jdbc:mysql://localhost/ --username root --P
+
+2)Provide password in a protected file
+
+
+sqoop list-databases --connect jdbc:mysql://localhost/ --username root 
+--password-file /sqoop/sqoop.pwd
+
+******#Password file should be in HDFS , not local
+hadoop fs -chown 400 sqoop.password
+
+
+options-file
+-------------
+-->used to store commonly used parameters
+Ex-
+Original command
+-----------------------
+sqoop import --connect jdbc:mysql://localhost/sample --username root 
+--password-file /sqoop/sqoop.pwd --table employees target-dir employees-new
+
+---
+options file content
+----------------------------------
+import
+--connect
+jdbc:mysql://localhost/ 
+--username 
+root 
+--password-file 
+/sqoop/sqoop.pwd
+----------------------------------
+
+command with options file
+--------------------------
+sqoop options-file /home/hduser/configdocs/options-file.txt
+--table employees target-dir employees-new --split-by alt_id
+
+------------------------------------------------------------------------------------------------
+
+Hadoop Export
+------------------
+#transfering data from hdfs to RDBMS
+--------------------------------------
+
+Export file from HDFS into empty table in RDBMS
+-----------------------------------------------
+sqoop export --connect jdbc:mysql://localhost/sample --username root 
+--password root --table departments_new --export-dir <directory path>
+
+#in case of export map reduce jobs devides input dataset into input splits
+
+Ex-
+sqoop export --connect jdbc:mysql://localhost/sample --username root 
+--password root --table departments_new --export-dir data_hdfs
+
+Update data
+-------------
+sqoop export --connect jdbc:mysql://localhost/sample --username root 
+--password root --table departments_new --export-dir <dir_path> --update-key dept_no
+
+
+#Above will run a sql commands like below-
+
+Update departments_new SEt dept_name=? where dept_no=?
+
+Update and insert data export
+------------------------------
+sqoop export --connect jdbc:mysql://localhost/sample --username root 
+--password root --table departments_new --export-dir <dir_path> 
+--update-key dept_no --update-mode allowinsert
+
+Sqoop integrates well with
+Hive
+Hbase
+OOzie
