@@ -322,6 +322,15 @@ FROM u_data  a JOIN u_user  b ON a.user_id = b.user_id;--Time taken: 90.877 seco
 SELECT /*+ MAPJOIN(a) */ a.*,b.*
 FROM u_user a JOIN u_data  b ON a.user_id = b.user_id;--Time taken: 87.84 seconds
 
+-->Map joins can be explained as moving smalll tables into memory and make use of the memory tables for faster queries.
+Map joins can be doen in two ways.
+Either by the above query hint method or or via auto join conversion:
+
+set hive.auto.convert.join=true;--in config, 
+select count(*) from
+store_sales join time_dim on (ss_sold_time_sk = t_time_sk)
+
+--And Hive will automatically use mapjoins for any tables smaller than hive.mapjoin.smalltable.filesize (default is 25MB).
 
 12. Create a partitioned table u_user_partitioned, partitioned by occupation column
 
@@ -339,7 +348,7 @@ SET hive.exec.dynamic.partition.mode = nonstrict;
 INSERT OVERWRITE TABLE u_user_partitioned PARTITION(occupation)
 SELECT user_id,age ,gender ,zip_code ,occupation from u_user;
 
-13. Find out the total number of male and total number of female only for the most common occupation –
+13. Find out the total number of male and total number of female only for the most common occupation Â–
 
 you can hard code the occupation/ use subqueries.
 
