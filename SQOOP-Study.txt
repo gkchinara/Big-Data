@@ -1,3 +1,6 @@
+#Below link will have required info for sqoop programmming
+#http://sqoop.apache.org/docs/1.4.6/SqoopUserGuide.html#_saved_jobs
+
 Options to import data from Databases
 -------------------------------------
 Manually:Export into files and then load into HDFS
@@ -152,7 +155,7 @@ sqoop job --exec import-employees
 #with the sqoop job we don't need to handel last modified date manually, sqoop metastore will handel this auto matically.
 
 -----------------------------------------------------------------------------------------------------------------------------------
-
+#http://www.tanzirmusabbir.com/2013/05/chunk-data-import-incremental-import-in.html
 
 IMPORT Subset of data
 ------------------------
