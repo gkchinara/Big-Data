@@ -1,0 +1,41 @@
+import org.apache.spark.{SparkContext,SparkConf}
+val conf = new SparkConf().setMaster("local").setAppName("Daily Revenue")
+val sc = new SparkContext(conf)
+
+//Read order and orderItems
+val baseDir = "C:\\retail_db\\"
+val orders = sc.textFile(baseDir + "orders")
+val orderItems = sc.textFile(baseDir +"order_items")
+  
+//Filter closed and completed orders
+val orderFiltered = orders.filter(od => (od.split(",")(3)=="COMPLETE" || od.split(",")(3)=="CLOSED"))
+  
+//Convert order and orderItems to key value pairs
+val ordersKV = orderFiltered.map(od => (od.split(",")(0).toInt,od.split(",")(1)))
+val orderItemsKV = orderItems.map(ods=>(ods.split(",")(1).toInt,(ods.split(",")(2).toInt,ods.split(",")(4).toFloat)))
+  
+val ordersJoin = ordersKV.join(orderItemsKV)
+val ordersJoinMap = ordersJoin.map(od=> ((od._2._1,od._2._2._1),od._2._2._2))
+ordersJoinMap.reduceByKey((tot,od)=>(tot+od))
+
+//Load products from local fie system to RDD
+
+import scala.io.Source
+val productsPath = "C:\\retail_db\\products\\part-00000"
+val  productsRaw = Source.
+  fromFile(productsPath).
+  getLines.
+  toList
+val products=sc.parallelize(productsRaw)
+  
+val productsMap = products.
+  map(product => (product.split(",")(0).toInt, product.split(",")(2)))
+  
+  
+
+  
+  
+  
+//Save final output to HDFS in txt and Avro file format 
+val outputPath = "C:\\retail_db\\daily_revenue_txt_scala"
+daily_revenue_per_product.saveAsTextFile(outputPath)

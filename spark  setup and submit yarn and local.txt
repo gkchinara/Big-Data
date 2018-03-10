@@ -1,0 +1,9 @@
+import org.apache.spark.{SparkContext,SparkConf}
+val conf = new SparkConf().setMaster("local").setAppName("DailyRevenue")
+val sc = new SparkContext(conf)
+
+sbt "run-main DailyRevenue C:\retail_db\ C:\retail_db\products\part-00000 C:\retail_db\daily_revenue local"
+
+spark-submit  --class DailyRevenue  E:\CCA Certification\scalademo\retail\target\scala-2.10\retail_2.10-1.0.jar C:\retail_db\ C:\retail_db\products\part-00000 C:\retail_db\daily_revenue local
+ 
+spark-submit  --class DailyRevenue --master yarn --conf spark.ui.port=13456 /home/swayamdm/retail_2.10-1.0.jar /public/retail_db/ /data/retail_db/products/part-00000 /user/swayamdm/daily_revenue_txt_scala yarn-client
